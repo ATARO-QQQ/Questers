@@ -109,20 +109,19 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Firebase Setup
         const firebaseConfig = {
-    apiKey: "AIzaSyCx9WAPT1zFmJBiuLPrt0AIJseursv2UZs",
-    authDomain: "quester-s.firebaseapp.com",
-    projectId: "quester-s",
-    storageBucket: "quester-s.firebasestorage.app",
-    messagingSenderId: "1061152644561",
-    appId: "1:1061152644561:web:f18539ce6d9e93205c94f0",
-    measurementId: "G-85JQTYY44K"
-  };
-      
+  apiKey: "AIzaSyCx9WAPT1zFmJBiuLPrt0AIJseursv2UZs",
+  authDomain: "quester-s.firebaseapp.com",
+  projectId: "quester-s",
+  storageBucket: "quester-s.firebasestorage.app",
+  messagingSenderId: "1061152644561",
+  appId: "1:1061152644561:web:f18539ce6d9e93205c94f0",
+  measurementId: "G-85JQTYY44K"
+};
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -131,15 +130,13 @@
         async function initAuth() {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    // カスタムトークンが存在する場合は使用
-                    // import { signInWithCustomToken } from ... (必要に応じて追加)
-                    await signInAnonymously(auth); // Fallback
+                    await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
             } catch (error) {
-                showMessage("データベースへの接続に失敗しました。", true);
-                console.error(error);
+                showMessage("データベースへの接続に失敗しました: " + error.message, true);
+                console.error("Auth error:", error);
             }
         }
         initAuth();
@@ -284,7 +281,7 @@
 
             } catch (error) {
                 console.error("Error adding document: ", error);
-                showMessage("データの保存に失敗しました。画像サイズが大きすぎる可能性があります。", true);
+                showMessage("データの保存に失敗しました。(" + error.message + ")", true);
             } finally {
                 btn.disabled = false;
                 btn.classList.remove('opacity-70');
