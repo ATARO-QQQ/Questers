@@ -24,13 +24,13 @@
         </div>
         <nav class="hidden md:block">
             <ul class="text-sm space-y-2 border-t border-[#a2a9b1] pt-4">
-                <li><a href="#" onclick="document.getElementById('edit-form').reset(); document.getElementById('sections-container').innerHTML=''; return false;" class="wiki-link">新規作成クリア</a></li>
-                <li><a href="#" onclick="alert('表示用ページへはURLから直接移動してください。'); return false;" class="wiki-link">表示ページ確認</a></li>
+                <li><a href="#" id="clear-form-btn" class="wiki-link">新規作成クリア</a></li>
+                <li><a href="#" id="check-page-btn" class="wiki-link">表示ページ確認</a></li>
             </ul>
             <div class="mt-6 border-t border-[#a2a9b1] pt-4 text-xs text-gray-600">
                 <p class="font-bold mb-1">ヘルプ</p>
                 <ul class="space-y-1">
-                    <li><a href="#" onclick="alert('自由に項目を追加し、画像を挿入できます。'); return false;" class="wiki-link">編集のガイドライン</a></li>
+                    <li><a href="#" id="help-btn" class="wiki-link">編集のガイドライン</a></li>
                 </ul>
             </div>
         </nav>
@@ -90,7 +90,7 @@
                                 <!-- ここにJSで基本情報項目が追加されます -->
                             </div>
                             
-                            <button type="button" onclick="addInfoItem()" class="text-sm text-[#0645ad] hover:bg-blue-50 px-2 py-1 rounded border border-transparent hover:border-blue-200 transition flex items-center">
+                            <button type="button" id="add-info-btn" class="text-sm text-[#0645ad] hover:bg-blue-50 px-2 py-1 rounded border border-transparent hover:border-blue-200 transition flex items-center">
                                 <span class="mr-1 font-bold">+</span> プロフィール項目を追加
                             </button>
                         </div>
@@ -106,7 +106,7 @@
                         <!-- ここにJSで項目が追加されます -->
                     </div>
 
-                    <button type="button" onclick="addSection()" class="mt-4 px-4 py-2 border border-[#0645ad] text-[#0645ad] hover:bg-[#eaecf0] rounded text-sm font-bold flex items-center transition">
+                    <button type="button" id="add-section-btn" class="mt-4 px-4 py-2 border border-[#0645ad] text-[#0645ad] hover:bg-[#eaecf0] rounded text-sm font-bold flex items-center transition">
                         <span class="mr-1 text-lg leading-none">+</span> 新しい項目を追加
                     </button>
                 </div>
@@ -123,27 +123,30 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase Setup
-        // ※必ずご自身のFirebaseプロジェクトの設定に書き換えてください
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            projectId: "demo-project"
+        // Firebase Setup (設定を適用)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCx9WAPT1zFmJBiuLPrt0AIJseursv2UZs",
+            authDomain: "quester-s.firebaseapp.com",
+            projectId: "quester-s",
+            storageBucket: "quester-s.firebasestorage.app",
+            messagingSenderId: "1061152644561",
+            appId: "1:1061152644561:web:f18539ce6d9e93205c94f0",
+            measurementId: "G-85JQTYY44K"
         };
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'questers-app';
+        
+        // データの保存先を定義 (固定)
+        const artifactAppId = 'questers-app';
 
-        // 認証処理（ご自身の環境では匿名認証が実行されます）
+        // 認証処理（匿名認証）
         async function initAuth() {
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                await signInAnonymously(auth);
             } catch (error) {
                 showMessage("認証に失敗しました: " + error.message, true);
                 console.error("Auth error:", error);
@@ -161,21 +164,84 @@
             window.scrollTo(0,0);
         }
 
-        // 基本情報の動的追加ロジック
-        window.addInfoItem = () => {
+        // --- UI 操作ロジック (イベントリスナー方式に変更) ---
+
+        function addInfoItem() {
             const id = Date.now();
             const container = document.getElementById('info-items-container');
             const html = `
                 <div class="flex items-center space-x-2 info-item-block bg-white p-2 border border-gray-200 rounded" id="info-${id}">
                     <input type="text" class="info-label w-1/3 border border-gray-300 p-1.5 text-sm rounded focus:ring-1 focus:outline-none" placeholder="項目名 (例: 生年月日)">
                     <input type="text" class="info-value w-2/3 border border-gray-300 p-1.5 text-sm rounded focus:ring-1 focus:outline-none" placeholder="内容 (例: 1990年1月1日)">
-                    <button type="button" onclick="document.getElementById('info-${id}').remove()" class="text-red-500 text-xs hover:underline whitespace-nowrap px-1">削除</button>
+                    <button type="button" class="delete-info-btn text-red-500 text-xs hover:underline whitespace-nowrap px-1">削除</button>
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', html);
-        };
+        }
 
-        // 画像処理関数 (Canvasでリサイズ＆圧縮)
+        function addSection() {
+            const id = Date.now();
+            const container = document.getElementById('sections-container');
+            const html = `
+                <div class="section-block border border-[#a2a9b1] bg-[#f8f9fa] p-4 relative rounded" id="sec-${id}">
+                    <button type="button" class="delete-sec-btn absolute top-3 right-3 text-red-600 text-xs border border-red-300 px-2 py-1 bg-white hover:bg-red-50 rounded">削除</button>
+                    
+                    <div class="mb-3 pr-16">
+                        <label class="block font-bold text-sm mb-1 text-gray-800">見出し (項目名)</label>
+                        <input type="text" class="sec-heading w-full border border-gray-300 p-2 text-sm rounded focus:ring-1 focus:outline-none" placeholder="例: 生い立ち、研究内容、著書 など">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="block font-bold text-sm mb-1 text-gray-800">この項目に挿入する画像 (任意)</label>
+                        <input type="file" accept="image/jpeg, image/png, image/webp" class="sec-image w-full text-sm bg-white border border-gray-300 rounded p-1">
+                    </div>
+                    
+                    <div>
+                        <label class="block font-bold text-sm mb-1 text-gray-800">本文</label>
+                        <textarea class="sec-content w-full border border-gray-300 p-2 text-sm rounded focus:ring-1 focus:outline-none" rows="5" placeholder="詳細な説明を入力してください..."></textarea>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        }
+
+        // イベントのバインディング (パソコン等でのクリック無効化対策)
+        document.getElementById('add-info-btn').addEventListener('click', addInfoItem);
+        document.getElementById('add-section-btn').addEventListener('click', addSection);
+
+        // 削除ボタンのイベント委譲
+        document.getElementById('info-items-container').addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-info-btn')) {
+                e.target.closest('.info-item-block').remove();
+            }
+        });
+        document.getElementById('sections-container').addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-sec-btn')) {
+                e.target.closest('.section-block').remove();
+            }
+        });
+
+        // サイドバーのメニュー
+        document.getElementById('clear-form-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('edit-form').reset();
+            document.getElementById('sections-container').innerHTML = '';
+            document.getElementById('info-items-container').innerHTML = '';
+            addSection();
+            addInfoItem();
+        });
+        document.getElementById('check-page-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            alert('表示用ページへはURLから直接移動してください。');
+        });
+        document.getElementById('help-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            alert('自由に項目を追加し、画像を挿入できます。');
+        });
+
+
+        // --- データ処理ロジック ---
+
         function processImage(file) {
             return new Promise((resolve, reject) => {
                 if (!file) {
@@ -206,33 +272,6 @@
                 reader.readAsDataURL(file);
             });
         }
-
-        // 動的セクション追加ロジック
-        window.addSection = () => {
-            const id = Date.now();
-            const container = document.getElementById('sections-container');
-            const html = `
-                <div class="section-block border border-[#a2a9b1] bg-[#f8f9fa] p-4 relative rounded" id="sec-${id}">
-                    <button type="button" onclick="document.getElementById('sec-${id}').remove()" class="absolute top-3 right-3 text-red-600 text-xs border border-red-300 px-2 py-1 bg-white hover:bg-red-50 rounded">削除</button>
-                    
-                    <div class="mb-3 pr-16">
-                        <label class="block font-bold text-sm mb-1 text-gray-800">見出し (項目名)</label>
-                        <input type="text" class="sec-heading w-full border border-gray-300 p-2 text-sm rounded focus:ring-1 focus:outline-none" placeholder="例: 生い立ち、研究内容、著書 など">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="block font-bold text-sm mb-1 text-gray-800">この項目に挿入する画像 (任意)</label>
-                        <input type="file" accept="image/jpeg, image/png, image/webp" class="sec-image w-full text-sm bg-white border border-gray-300 rounded p-1">
-                    </div>
-                    
-                    <div>
-                        <label class="block font-bold text-sm mb-1 text-gray-800">本文</label>
-                        <textarea class="sec-content w-full border border-gray-300 p-2 text-sm rounded focus:ring-1 focus:outline-none" rows="5" placeholder="詳細な説明を入力してください..."></textarea>
-                    </div>
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', html);
-        };
 
         // フォーム送信処理
         document.getElementById('edit-form').addEventListener('submit', async (e) => {
@@ -303,17 +342,20 @@
                     title: title,
                     summary: summary,
                     imageBase64: mainImageBase64,
-                    infoItems: infoItems, // 新規追加：基本情報の配列
+                    infoItems: infoItems, 
                     sections: processedSections,
                     createdAt: Date.now()
                 };
 
-                const researchersRef = collection(db, 'artifacts', appId, 'public', 'data', 'researchers');
+                const researchersRef = collection(db, 'artifacts', artifactAppId, 'public', 'data', 'researchers');
                 await addDoc(researchersRef, docData);
 
                 showMessage("記事の保存が完了しました！表示用ページに反映されています。");
                 document.getElementById('edit-form').reset();
-                document.getElementById('sections-container').innerHTML = ''; // セクションもクリア
+                document.getElementById('sections-container').innerHTML = '';
+                document.getElementById('info-items-container').innerHTML = '';
+                addSection();
+                addInfoItem();
 
             } catch (error) {
                 console.error("Error adding document: ", error);
@@ -325,10 +367,10 @@
             }
         });
 
-        // ページ読み込み時にデフォルトで1つセクションを空で用意しておく
+        // ページ読み込み時にデフォルトで1つずつ空で用意しておく
         window.addEventListener('DOMContentLoaded', () => {
             addSection();
-            addInfoItem(); // 基本情報も1つ枠を用意しておく
+            addInfoItem();
         });
 
     </script>
