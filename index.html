@@ -22,19 +22,19 @@
     <!-- Wiki風サイドバー -->
     <aside class="w-full md:w-48 bg-[#f6f6f6] p-4 flex-shrink-0 border-r border-[#a2a9b1] md:min-h-screen">
         <div class="text-center mb-6 mt-4">
-            <a href="#" class="block text-2xl font-serif font-bold text-gray-800 cursor-pointer no-underline">Quester's</a>
-            <p class="text-xs text-gray-500 mt-1">探求者ポータル</p>
+            <a href="#" id="home-link" class="block text-2xl font-serif font-bold text-gray-800 cursor-pointer no-underline">Quester's</a>
+            <p class="text-xs text-gray-500 mt-1">フリー百科事典</p>
         </div>
         <nav class="hidden md:block">
             <ul class="text-sm space-y-2 border-t border-[#a2a9b1] pt-4">
-                <li><a href="#" class="wiki-link font-bold">メインページ</a></li>
-                <li><a href="#" onclick="alert('この機能はモックアップです。'); return false;" class="wiki-link">最近の更新</a></li>
-                <li><a href="#" onclick="alert('この機能はモックアップです。'); return false;" class="wiki-link">おまかせ表示</a></li>
+                <li><a href="#" class="wiki-link font-bold nav-home-link">メインページ</a></li>
+                <li><a href="#" class="wiki-link nav-mock-link">最近の更新</a></li>
+                <li><a href="#" class="wiki-link nav-mock-link">おまかせ表示</a></li>
             </ul>
             <div class="mt-6 border-t border-[#a2a9b1] pt-4 text-xs text-gray-600">
                 <p class="font-bold mb-1">ヘルプ</p>
                 <ul class="space-y-1">
-                    <li><a href="#" onclick="alert('編集用ページへのURLを直接入力してください。'); return false;" class="wiki-link">記事の編集方法</a></li>
+                    <li><a href="#" class="wiki-link nav-help-link">記事の編集方法</a></li>
                 </ul>
             </div>
         </nav>
@@ -58,7 +58,7 @@
             <!-- 一覧表示領域 -->
             <div id="list-view">
                 <h1 class="wiki-header text-4xl mb-4 font-normal">研究者一覧</h1>
-                <p class="mb-4 text-[#202122] leading-relaxed">Quester's へようこそ。ここは研究者が自身の研究や経歴についてまとめるポータルサイト集です。<br>以下のリストから各ページを閲覧できます。</p>
+                <p class="mb-4 text-[#202122] leading-relaxed">Quester's へようこそ。ここは研究者が自身の研究や経歴についてまとめるフリー百科事典です。<br>以下のリストから各ページを閲覧できます。</p>
                 
                 <div id="loading-list" class="text-gray-500 my-8">データを読み込んでいます...</div>
                 
@@ -72,7 +72,7 @@
 
             <!-- 詳細表示領域 (Wiki記事レイアウト) -->
             <div id="detail-view" class="hidden">
-                <div class="text-xs text-gray-500 mb-2">&lt; <a href="#" class="wiki-link">Quester's に戻る</a></div>
+                <div class="text-xs text-gray-500 mb-2">&lt; <a href="#" class="wiki-link nav-home-link">Quester's に戻る</a></div>
                 <h1 id="detail-title" class="wiki-header text-4xl mb-4 font-normal"></h1>
                 
                 <div class="clearfix text-[#202122] leading-relaxed relative">
@@ -94,28 +94,31 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase Setup
-        // ※ edit.html と同じ設定にしてください
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            projectId: "demo-project" 
+        // Firebase Setup (設定を適用)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCx9WAPT1zFmJBiuLPrt0AIJseursv2UZs",
+            authDomain: "quester-s.firebaseapp.com",
+            projectId: "quester-s",
+            storageBucket: "quester-s.firebasestorage.app",
+            messagingSenderId: "1061152644561",
+            appId: "1:1061152644561:web:f18539ce6d9e93205c94f0",
+            measurementId: "G-85JQTYY44K"
         };
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'questers-app';
+        
+        // データの保存先を定義 (固定)
+        const artifactAppId = 'questers-app';
         
         let allResearchers = [];
 
         async function initAuth() {
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                await signInAnonymously(auth);
             } catch (error) {
                 console.error("Auth error:", error);
                 document.getElementById('loading-list').textContent = "データベースの接続に失敗しました。";
@@ -126,7 +129,7 @@
             const user = auth.currentUser;
             if (!user) return;
 
-            const researchersRef = collection(db, 'artifacts', appId, 'public', 'data', 'researchers');
+            const researchersRef = collection(db, 'artifacts', artifactAppId, 'public', 'data', 'researchers');
             try {
                 const querySnapshot = await getDocs(researchersRef);
                 allResearchers = [];
@@ -171,18 +174,19 @@
             });
         }
 
-        // 表示切り替えロジック
-        window.showList = () => {
+        // --- UI 操作とルーティング ---
+
+        function showList() {
             document.getElementById('list-view').classList.remove('hidden');
             document.getElementById('detail-view').classList.add('hidden');
+            window.location.hash = ''; // ハッシュをクリア
             window.scrollTo(0,0);
-        };
+        }
 
-        window.showDetail = (id) => {
+        function showDetail(id) {
             const researcher = allResearchers.find(r => r.id === id);
             if (!researcher) {
-                // IDが見つからなければ一覧に戻す
-                window.location.hash = '';
+                showList();
                 return;
             }
 
@@ -222,7 +226,7 @@
             
             document.getElementById('detail-infobox').innerHTML = infoboxHTML;
 
-            // 基本情報(タイトル)セット ※上部の見出し用
+            // 基本情報(タイトル)セット
             document.getElementById('detail-title').textContent = researcher.name;
             document.getElementById('detail-summary').innerHTML = researcher.summary ? escapeHTML(researcher.summary) : '';
 
@@ -246,7 +250,6 @@
                 let sectionIndex = 1;
                 researcher.sections.forEach((sec, idx) => {
                     if (sec.heading) {
-                        // 目次のアンカーリンク (IDとセクション番号を組み合わせる)
                         sectionsHTML += `<li><a href="#${id}-sec-${idx}" class="wiki-link text-[#0645ad]">${sectionIndex}. ${escapeHTML(sec.heading)}</a></li>`;
                         sectionIndex++;
                     }
@@ -276,7 +279,7 @@
             }
 
             document.getElementById('detail-sections').innerHTML = sectionsHTML;
-        };
+        }
 
         function escapeHTML(str) {
             if (!str) return '';
@@ -293,30 +296,58 @@
 
         // URLのハッシュを監視してページを切り替えるルーター
         function checkUrlAndRoute() {
-            // 例: #abcde12345
             const hash = window.location.hash.substring(1); 
             
             if (!hash) {
-                window.showList();
+                // ホーム画面の場合は、強制的に一覧を表示してページ上部へ
+                document.getElementById('list-view').classList.remove('hidden');
+                document.getElementById('detail-view').classList.add('hidden');
+                window.scrollTo(0,0);
                 return;
             }
 
-            // 目次へのジャンプリンク（例: #abcde-sec-1）の場合は再描画しない
             if (hash.includes('-sec-')) {
-                return; 
+                return; // 目次へのジャンプ
             }
 
-            // それ以外は人物のIDとみなして詳細ページを描画
-            window.showDetail(hash);
+            showDetail(hash);
             
-            // 初回読み込みで直接URLアクセスした場合に上部にスクロール
             if (document.getElementById('detail-view').classList.contains('hidden') === false) {
                  window.scrollTo(0,0);
             }
         }
 
-        // ハッシュが変更された時にルートをチェック
+        // --- イベントのバインディング (パソコン・スマホ対応) ---
+
+        // ハッシュ変更時
         window.addEventListener('hashchange', checkUrlAndRoute);
+
+        // サイドバー・ナビゲーションのクリックイベント
+        document.getElementById('home-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            showList();
+        });
+        
+        document.querySelectorAll('.nav-home-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                showList();
+            });
+        });
+
+        document.querySelectorAll('.nav-mock-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                alert('この機能はモックアップです。');
+            });
+        });
+
+        document.querySelectorAll('.nav-help-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                alert('編集用ページへのURLを直接入力してください。');
+            });
+        });
 
         // アプリケーション初期化
         initAuth();
