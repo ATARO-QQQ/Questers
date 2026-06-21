@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quester's</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #f6f6f6; font-family: sans-serif; color: #202122; }
+        .wiki-content { background-color: #ffffff; border: 1px solid #a7d7f9; }
+        .wiki-header { border-bottom: 1px solid #a2a9b1; margin-bottom: 0.5em; padding-bottom: 0.25em; font-family: "Linux Libertine", "Georgia", "Times", serif; }
+        .infobox { float: right; width: 300px; max-width: 100%; margin: 0 0 1em 1em; background-color: #f8f9fa; border: 1px solid #a2a9b1; padding: 0.5em; font-size: 0.9em; }
+        .wiki-link { color: #0645ad; text-decoration: none; cursor: pointer; }
+        .wiki-link:hover { text-decoration: underline; }
+        .toc-box { background-color: #f8f9fa; border: 1px solid #a2a9b1; display: inline-block; padding: 10px 15px; margin-bottom: 1em; min-width: 250px; font-size: 0.95em; }
+        .thumb-right { float: right; margin: 0.5em 0 1em 1.5em; border: 1px solid #c8ccd1; background-color: #f8f9fa; padding: 3px; max-width: 300px; }
+        .clearfix::after { content: ""; clear: both; display: table; }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row min-h-screen">
+
+    <!-- Wiki風サイドバー -->
+    <aside class="w-full md:w-48 bg-[#f6f6f6] p-4 flex-shrink-0 border-r border-[#a2a9b1] md:min-h-screen">
+        <div class="text-center mb-6 mt-4">
+            <h1 class="text-2xl font-serif font-bold text-gray-800 cursor-pointer" onclick="showList()">Quester's</h1>
+            <p class="text-xs text-gray-500 mt-1">探求者ポータルサイト</p>
+        </div>
+        
+    </aside>
+
+    <!-- メインコンテンツ -->
+    <main class="flex-1 bg-white">
+        <!-- Wiki風 タブ部分 -->
+        <div class="flex pt-4 px-6 bg-[#f6f6f6] border-b border-[#a2a9b1] hidden md:flex">
+            <div class="px-4 py-2 bg-white border border-[#a2a9b1] border-b-0 rounded-t relative top-[1px] font-bold text-sm text-[#0645ad]">
+                記事
+            </div>
+            <div class="px-4 py-2 ml-1 relative top-[1px] font-bold text-sm text-[#0645ad] cursor-pointer hover:bg-gray-200 rounded-t">
+                閲覧
+            </div>
+        </div>
+
+        <div class="p-4 md:p-8 pt-6">
+            <div id="message-box" class="hidden mb-4 p-4 rounded text-white text-sm bg-blue-500"></div>
+            
+            <!-- 一覧表示領域 -->
+            <div id="list-view">
+                <h1 class="wiki-header text-4xl mb-4 font-normal">研究者一覧</h1>
+                <p class="mb-4 text-[#202122] leading-relaxed">Quester's へようこそ。ここは研究者が自身の研究や経歴についてまとめるフリー百科事典です。<br>以下のリストから各ページを閲覧できます。</p>
+                
+                <div id="loading-list" class="text-gray-500 my-8">データを読み込んでいます...</div>
+                
+                <div class="bg-[#f8f9fa] border border-[#a2a9b1] p-4 mt-6">
+                    <h2 class="font-bold border-b border-[#a2a9b1] pb-2 mb-3">収録済みの記事</h2>
+                    <ul id="researchers-list" class="list-disc list-inside space-y-2 marker:text-[#0645ad]">
+                        <!-- Javascriptで一覧を挿入 -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 詳細表示領域 (Wiki記事レイアウト) -->
+            <div id="detail-view" class="hidden">
+                <div class="text-xs text-gray-500 mb-2">&lt; <a href="#" onclick="showList(); return false;" class="wiki-link">Quester's に戻る</a></div>
+                <h1 id="detail-title" class="wiki-header text-4xl mb-4 font-normal"></h1>
+                
+                <div class="clearfix text-[#202122] leading-relaxed relative">
+                    <!-- インフォボックス (右側配置) -->
+                    <div class="infobox" id="detail-infobox">
+                        <div class="text-center font-bold bg-[#b0c4de] py-2 mb-2 text-lg border border-[#a2a9b1]" id="info-name"></div>
+                        <img id="info-image" src="" alt="Profile Image" class="w-full h-auto object-cover border border-[#a2a9b1] mb-2 hidden">
+                        <div class="text-sm font-bold border-b border-[#a2a9b1] pb-1 mb-1">基本情報</div>
+                        <div class="text-sm flex">
+                            <div class="w-1/3 font-bold text-gray-700">肩書き</div>
+                            <div class="w-2/3" id="info-title"></div>
+                        </div>
+                    </div>
+
+                    <!-- 概要文 -->
+                    <div id="detail-summary" class="whitespace-pre-wrap mb-6"></div>
+
+                    <!-- 目次と動的セクション展開領域 -->
+                    <div id="detail-sections"></div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Setup
+        const firebaseConfig = {
+    apiKey: "AIzaSyCx9WAPT1zFmJBiuLPrt0AIJseursv2UZs",
+    authDomain: "quester-s.firebaseapp.com",
+    projectId: "quester-s",
+    storageBucket: "quester-s.firebasestorage.app",
+    messagingSenderId: "1061152644561",
+    appId: "1:1061152644561:web:f18539ce6d9e93205c94f0",
+    measurementId: "G-85JQTYY44K"
+  };
+      
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'questers-app';
+        
+        let allResearchers = [];
+
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInAnonymously(auth);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth error:", error);
+            }
+        }
+
+        async function loadData() {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            const researchersRef = collection(db, 'artifacts', appId, 'public', 'data', 'researchers');
+            try {
+                const querySnapshot = await getDocs(researchersRef);
+                allResearchers = [];
+                querySnapshot.forEach((doc) => {
+                    allResearchers.push({ id: doc.id, ...doc.data() });
+                });
+                allResearchers.sort((a, b) => b.createdAt - a.createdAt);
+                renderList();
+                checkUrlAndRoute();
+            } catch (error) {
+                document.getElementById('loading-list').textContent = "データの読み込みに失敗しました。";
+                console.error("Fetch error:", error);
+            }
+        }
+
+        function renderList() {
+            const listEl = document.getElementById('researchers-list');
+            listEl.innerHTML = '';
+            document.getElementById('loading-list').style.display = 'none';
+
+            if (allResearchers.length === 0) {
+                listEl.innerHTML = '<li class="text-gray-500 list-none">まだ記事が作成されていません。</li>';
+                return;
+            }
+
+            allResearchers.forEach(researcher => {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                a.href = `?id=${researcher.id}`;
+                a.className = 'wiki-link font-bold text-[15px]';
+                a.textContent = researcher.name;
+                
+                const span = document.createElement('span');
+                span.className = 'text-gray-600 text-sm ml-2';
+                span.textContent = `(${researcher.title || '研究者'})`;
+
+                a.onclick = (e) => {
+                    e.preventDefault();
+                    history.pushState(null, '', `?id=${researcher.id}`);
+                    window.showDetail(researcher.id);
+                };
+
+                li.appendChild(a);
+                li.appendChild(span);
+                listEl.appendChild(li);
+            });
+        }
+
+        window.showList = () => {
+            history.pushState(null, '', window.location.pathname);
+            document.getElementById('list-view').classList.remove('hidden');
+            document.getElementById('detail-view').classList.add('hidden');
+            window.scrollTo(0,0);
+        };
+
+        window.showDetail = (id) => {
+            const researcher = allResearchers.find(r => r.id === id);
+            if (!researcher) {
+                window.showList();
+                return;
+            }
+
+            document.getElementById('list-view').classList.add('hidden');
+            document.getElementById('detail-view').classList.remove('hidden');
+
+            // 基本情報セット
+            document.getElementById('detail-title').textContent = researcher.name;
+            document.getElementById('info-name').textContent = researcher.name;
+            document.getElementById('info-title').textContent = researcher.title || '-';
+            
+            const imgEl = document.getElementById('info-image');
+            if (researcher.imageBase64) {
+                imgEl.src = researcher.imageBase64;
+                imgEl.classList.remove('hidden');
+            } else {
+                imgEl.classList.add('hidden');
+            }
+
+            document.getElementById('detail-summary').innerHTML = researcher.summary ? escapeHTML(researcher.summary) : '';
+
+            // セクション（目次と本文）の構築
+            let sectionsHTML = '';
+            
+            // 下位互換用（旧データ構造の対応）
+            if (researcher.content && (!researcher.sections || researcher.sections.length === 0)) {
+                sectionsHTML += `<h2 class="wiki-header text-2xl mt-8 mb-4">研究詳細</h2>`;
+                sectionsHTML += `<div class="whitespace-pre-wrap">${escapeHTML(researcher.content)}</div>`;
+            }
+
+            // 新データ構造（動的セクション）の対応
+            if (researcher.sections && researcher.sections.length > 0) {
+                // 1. 目次 (ToC) の生成
+                sectionsHTML += `
+                    <div class="toc-box">
+                        <div class="font-bold text-center mb-2">目次</div>
+                        <ul class="list-none pl-4 m-0 space-y-1">
+                `;
+                let sectionIndex = 1;
+                researcher.sections.forEach((sec, idx) => {
+                    if (sec.heading) {
+                        sectionsHTML += `<li><a href="#section-${idx}" class="wiki-link text-[#0645ad]">${sectionIndex}. ${escapeHTML(sec.heading)}</a></li>`;
+                        sectionIndex++;
+                    }
+                });
+                sectionsHTML += `</ul></div>`;
+
+                // 2. 各セクション本文の生成
+                researcher.sections.forEach((sec, idx) => {
+                    if (sec.heading) {
+                        sectionsHTML += `<h2 id="section-${idx}" class="wiki-header text-2xl mt-8 mb-4">${escapeHTML(sec.heading)}</h2>`;
+                    }
+                    sectionsHTML += `<div class="clearfix mb-4">`;
+                    
+                    // 画像がある場合はWikipedia風の右寄せサムネイル
+                    if (sec.imageBase64) {
+                        sectionsHTML += `
+                            <div class="thumb-right">
+                                <img src="${sec.imageBase64}" class="w-full h-auto cursor-pointer" onclick="window.open(this.src)">
+                            </div>
+                        `;
+                    }
+                    
+                    if (sec.content) {
+                        sectionsHTML += `<div class="whitespace-pre-wrap text-[15px]">${escapeHTML(sec.content)}</div>`;
+                    }
+                    sectionsHTML += `</div>`;
+                });
+            }
+
+            document.getElementById('detail-sections').innerHTML = sectionsHTML;
+            window.scrollTo(0,0);
+        };
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag])
+            );
+        }
+
+        function checkUrlAndRoute() {
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+            if (id) {
+                window.showDetail(id);
+            } else {
+                window.showList();
+            }
+        }
+
+        window.addEventListener('popstate', checkUrlAndRoute);
+
+        // アプリケーション初期化
+        initAuth();
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                loadData();
+            }
+        });
+
+    </script>
+</body>
+</html>
